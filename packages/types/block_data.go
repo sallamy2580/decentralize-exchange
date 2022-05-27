@@ -27,6 +27,26 @@ var (
 	ErrUnmarshallBlock = errors.New("Unmarshall block")
 )
 
+//BlockData is a structure of the block's header
+type BlockData struct {
+	BlockID        int64
+	Time           int64
+	EcosystemID    int64
+	KeyID          int64
+	NodePosition   int64
+	Sign           []byte
+	Hash           []byte
+	RollbacksHash  []byte
+	Version        int
+	ConsensusMode  int8
+	CandidateNodes []byte
+}
+
+func (b BlockData) String() string {
+	return fmt.Sprintf("BlockID:%d, Time:%d, NodePosition %d", b.BlockID, b.Time, b.NodePosition)
+}
+
+func blockVer(cur, prev *BlockData) (ret string) {
 func blockVer(cur, prev *BlockHeader) (ret string) {
 	if cur.Version >= consts.BvRollbackHash {
 		ret = fmt.Sprintf(",%x", prev.RollbacksHash)
@@ -34,6 +54,8 @@ func blockVer(cur, prev *BlockHeader) (ret string) {
 	return
 }
 
+func (b *BlockData) ForSha(prev *BlockData, mrklRoot []byte) string {
+func (b *BlockData) ForSha(prev *BlockData, mrklRoot []byte) string {
 func (b *BlockHeader) GenHash(prev *BlockHeader, mrklRoot []byte) []byte {
 	return crypto.DoubleHash([]byte(b.ForSha(prev, mrklRoot)))
 }
@@ -57,13 +79,29 @@ func ParseBlockHeader(buf *bytes.Buffer, maxBlockSize int64) (header *BlockHeade
 		err = ErrMaxBlockSize(maxBlockSize, buf.Len())
 		return
 	}
+	blo := &Block{}
+	blo := &Block{}
 	blo := &BlockData{}
 	if err := blo.UnmarshallBlock(buf.Bytes()); err != nil {
+		return BlockData{}, err
+		return BlockData{}, err
 		return nil, err
 	}
 	return blo.Header, nil
 }
 
+type Block struct {
+	Header     BlockData
+	PrevHeader *BlockData
+	MerkleRoot []byte
+	BinData    []byte
+	TxFullData [][]byte
+type Block struct {
+	Header     BlockData
+	PrevHeader *BlockData
+	MerkleRoot []byte
+	BinData    []byte
+	TxFullData [][]byte
 type BlockDataOption func(b *BlockData) error
 
 func (b *BlockData) Apply(opts ...BlockDataOption) error {
@@ -78,6 +116,8 @@ func (b *BlockData) Apply(opts ...BlockDataOption) error {
 	return nil
 }
 
+func (b Block) ForSign() string {
+func (b Block) ForSign() string {
 func WithCurHeader(cur *BlockHeader) BlockDataOption {
 	return func(b *BlockData) error {
 		b.Header = cur
@@ -110,6 +150,8 @@ func (b BlockData) ForSign() string {
 	return b.Header.ForSign(b.PrevHeader, b.MerkleRoot)
 }
 
+func (b *Block) GetMerkleRoot() []byte {
+func (b *Block) GetMerkleRoot() []byte {
 func (b *BlockData) GenMerkleRoot() []byte {
 	var mrklArray [][]byte
 	for _, tr := range b.TxFullData {
@@ -121,6 +163,8 @@ func (b *BlockData) GenMerkleRoot() []byte {
 	return MerkleTreeRoot(mrklArray)
 }
 
+func (b *Block) GetSign(key []byte) ([]byte, error) {
+func (b *Block) GetSign(key []byte) ([]byte, error) {
 func (b *BlockData) GetSign(key []byte) ([]byte, error) {
 	forSign := b.ForSign()
 	signed, err := crypto.Sign(key, []byte(forSign))
@@ -131,12 +175,28 @@ func (b *BlockData) GetSign(key []byte) ([]byte, error) {
 }
 
 // MarshallBlock is marshalling block
+func (b *Block) MarshallBlock(key []byte) ([]byte, error) {
+	if b.Header.BlockID != 1 {
+		b.MerkleRoot = b.GetMerkleRoot()
+		signed, err := b.GetSign(key)
+		if err != nil {
+			return nil, err
+func (b *Block) MarshallBlock(key []byte) ([]byte, error) {
+	if b.Header.BlockID != 1 {
+		b.MerkleRoot = b.GetMerkleRoot()
+		signed, err := b.GetSign(key)
+		if err != nil {
+			return nil, err
 func (b *BlockData) MarshallBlock(key []byte) ([]byte, error) {
 	if b.AfterTxs != nil {
 		for i := 0; i < len(b.AfterTxs.TxExecutionSql); i++ {
 			b.AfterTxs.TxExecutionSql[i] = DoZlibCompress(b.AfterTxs.TxExecutionSql[i])
 		}
+		b.Header.Sign = signed
+		b.Header.Sign = signed
 	}
+	return msgpack.Marshal(b)
+	return msgpack.Marshal(b)
 	for i := 0; i < len(b.TxFullData); i++ {
 		b.TxFullData[i] = DoZlibCompress(b.TxFullData[i])
 	}
@@ -150,6 +210,8 @@ func (b *BlockData) MarshallBlock(key []byte) ([]byte, error) {
 	return proto.Marshal(b)
 }
 
+func (b *Block) UnmarshallBlock(data []byte) error {
+func (b *Block) UnmarshallBlock(data []byte) error {
 func (b *BlockData) UnmarshallBlock(data []byte) error {
 	if len(data) == 0 {
 		return ErrZeroBlockSize
@@ -157,7 +219,7 @@ func (b *BlockData) UnmarshallBlock(data []byte) error {
 	if len(data) < minBlockSize {
 		return ErrMinBlockSize(len(data), minBlockSize)
 	}
-	if err := proto.Unmarshal(data, b); err != nil {
+	if err := msgpack.Unmarshal(data, &b); err != nil {
 		return errors.Wrap(err, "unmarshalling block")
 	}
 	if b.AfterTxs != nil {

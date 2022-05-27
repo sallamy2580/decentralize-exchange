@@ -27,6 +27,18 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// upsertInfoBlock updates info_block table
+func (b *Block) upsertInfoBlock(dbTx *sqldb.DbTransaction, block *sqldb.BlockChain) error {
+	ib := &sqldb.InfoBlock{
+		Hash:           block.Hash,
+		BlockID:        block.ID,
+		Time:           block.Time,
+		EcosystemID:    block.EcosystemID,
+		KeyID:          block.KeyID,
+		NodePosition:   converter.Int64ToStr(block.NodePosition),
+		RollbacksHash:  block.RollbacksHash,
+		ConsensusMode:  block.ConsensusMode,
+		CandidateNodes: block.CandidateNodes,
 // ProcessBlockByBinData is processing block with in table previous block
 func ProcessBlockByBinData(data []byte, checkSize bool) (*Block, error) {
 	if checkSize && int64(len(data)) > syspar.GetMaxBlockSize() {
@@ -67,6 +79,17 @@ func (b *Block) InsertIntoBlockchain(dbTx *sqldb.DbTransaction) error {
 	}
 
 	blockchain := &sqldb.BlockChain{
+		ID:             blockID,
+		Hash:           crypto.DoubleHash([]byte(b.Header.ForSha(b.PrevHeader, b.MrklRoot))),
+		Data:           b.BinData,
+		EcosystemID:    b.Header.EcosystemID,
+		KeyID:          b.Header.KeyID,
+		NodePosition:   b.Header.NodePosition,
+		Time:           b.Header.Time,
+		ConsensusMode:  b.Header.ConsensusMode,
+		CandidateNodes: b.Header.CandidateNodes,
+		RollbacksHash:  rollbacksHash,
+		Tx:             int32(len(b.Transactions)),
 		ID:            blockID,
 		Hash:          b.Header.BlockHash,
 		Data:          b.BinData,

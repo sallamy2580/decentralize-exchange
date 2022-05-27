@@ -33,6 +33,12 @@ func BlockGenerator(ctx context.Context, d *daemon) error {
 	} else {
 		return nil
 	}
+	candidateNode := &sqldb.CandidateNode{}
+	candidateNodes, err := candidateNode.GetCandidateNode()
+	if err == nil && len(candidateNodes) > 0 {
+		syspar.SetRunModel(consts.CandidateNodeMode)
+		return BlockGeneratorNew(ctx, d)
+	}
 	d.sleepTime = time.Second
 	if node.IsNodePaused() {
 		return nil
@@ -132,6 +138,14 @@ func BlockGenerator(ctx context.Context, d *daemon) error {
 		return nil
 	}
 
+	header := &types.BlockData{
+		BlockID:       prevBlock.BlockID + 1,
+		Time:          st.Unix(),
+		EcosystemID:   0,
+		KeyID:         conf.Config.KeyID,
+		NodePosition:  nodePosition,
+		Version:       consts.BlockVersion,
+		ConsensusMode: consts.HonorNodeMode,
 	header := &types.BlockHeader{
 		BlockId:      prevBlock.BlockID + 1,
 		Timestamp:    st.Unix(),
@@ -141,12 +155,20 @@ func BlockGenerator(ctx context.Context, d *daemon) error {
 		Version:      consts.BlockVersion,
 	}
 
+	pb := &types.BlockData{
+		BlockID:       prevBlock.BlockID,
+		Hash:          prevBlock.Hash,
+	pb := &types.BlockData{
+		BlockID:       prevBlock.BlockID,
+		Hash:          prevBlock.Hash,
 	prev := &types.BlockHeader{
 		BlockId:       prevBlock.BlockID,
 		BlockHash:     prevBlock.Hash,
 		RollbacksHash: prevBlock.RollbacksHash,
 	}
 
+	blockBin, err := generateNextBlock(header, pb, trs)
+	blockBin, err := generateNextBlock(header, pb, trs)
 	blockBin, err := generateNextBlock(header, prev, trs)
 	if err != nil {
 		return err
@@ -157,10 +179,30 @@ func BlockGenerator(ctx context.Context, d *daemon) error {
 		log.WithFields(log.Fields{"error": err}).Error("on inserting new block")
 		return err
 	}
+	log.WithFields(log.Fields{"block": header.String(), "type": consts.SyncProcess}).Debug("Generated block ID")
+
+	//go notificator.CheckTokenMovementLimits(nil, conf.Config.TokenMovement, header.BlockID)
+	log.WithFields(log.Fields{"block": header.String(), "type": consts.SyncProcess}).Debug("Generated block ID")
+
+	//go notificator.CheckTokenMovementLimits(nil, conf.Config.TokenMovement, header.BlockID)
 	//go notificator.CheckTokenMovementLimits(nil, conf.Config.TokenMovement, header.BlockId)
 	return nil
 }
 
+func generateNextBlock(blockHeader, prevBlock *types.BlockData, trs []*sqldb.Transaction) ([]byte, error) {
+	trData := make([][]byte, 0, len(trs))
+	for _, tr := range trs {
+		trData = append(trData, tr.Data)
+	}
+
+	return block.MarshallBlock(blockHeader, prevBlock, trData)
+func generateNextBlock(blockHeader, prevBlock *types.BlockData, trs []*sqldb.Transaction) ([]byte, error) {
+	trData := make([][]byte, 0, len(trs))
+	for _, tr := range trs {
+		trData = append(trData, tr.Data)
+	}
+
+	return block.MarshallBlock(blockHeader, prevBlock, trData)
 func generateNextBlock(blockHeader, prevBlock *types.BlockHeader, trs [][]byte) ([]byte, error) {
 	return block.MarshallBlock(
 		types.WithCurHeader(blockHeader),
@@ -168,6 +210,8 @@ func generateNextBlock(blockHeader, prevBlock *types.BlockHeader, trs [][]byte) 
 		types.WithTxFullData(trs))
 }
 
+func processTransactions(logger *log.Entry, txs []*sqldb.Transaction, done <-chan time.Time, st int64) ([]*sqldb.Transaction, error) {
+func processTransactions(logger *log.Entry, txs []*sqldb.Transaction, done <-chan time.Time, st int64) ([]*sqldb.Transaction, error) {
 func processTransactions(logger *log.Entry, txs []*sqldb.Transaction, done <-chan time.Time, st int64) ([][]byte, error) {
 	//p := new(transaction.Transaction)
 
@@ -211,6 +255,8 @@ func processTransactions(logger *log.Entry, txs []*sqldb.Transaction, done <-cha
 	}()
 
 	// Checks preprocessing count limits
+	txList := make([]*sqldb.Transaction, 0, len(trs))
+	txList := make([]*sqldb.Transaction, 0, len(trs))
 	txList := make([][]byte, 0, len(trs))
 	txs = append(txs, trs...)
 	for i, txItem := range txs {
