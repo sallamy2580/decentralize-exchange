@@ -99,7 +99,7 @@ func (b *Block) InsertIntoBlockchain(dbTx *sqldb.DbTransaction) error {
 		Tx:            int32(len(b.TxFullData)),
 	}
 	var validBlockTime bool
-	if blockID > 1 {
+	if blockID > 1 && syspar.GetRunModel() == consts.HonorNodeMode {
 		validBlockTime, err = protocols.NewBlockTimeCounter().BlockForTimeExists(time.Unix(blockchain.Time, 0), int(blockchain.NodePosition))
 		if err != nil {
 			log.WithFields(log.Fields{"type": consts.BlockError, "error": err}).Error("block validation")
