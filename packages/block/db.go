@@ -99,6 +99,7 @@ func (b *Block) InsertIntoBlockchain(dbTx *sqldb.DbTransaction) error {
 		Tx:            int32(len(b.TxFullData)),
 	}
 	var validBlockTime bool
+	if blockID > 1 && syspar.IsHonorNodeMode() {
 	if blockID > 1 && syspar.GetRunModel() == consts.HonorNodeMode {
 		validBlockTime, err = protocols.NewBlockTimeCounter().BlockForTimeExists(time.Unix(blockchain.Time, 0), int(blockchain.NodePosition))
 		if err != nil {
@@ -187,6 +188,24 @@ func GetDataFromFirstBlock() (data *types.FirstBlock, ok bool) {
 // upsertInfoBlock updates info_block table
 func (b *Block) upsertInfoBlock(dbTx *sqldb.DbTransaction, block *sqldb.BlockChain) error {
 	ib := &sqldb.InfoBlock{
+		Hash:           block.Hash,
+		BlockID:        block.ID,
+		Time:           block.Time,
+		EcosystemID:    block.EcosystemID,
+		KeyID:          block.KeyID,
+		NodePosition:   converter.Int64ToStr(block.NodePosition),
+		RollbacksHash:  block.RollbacksHash,
+		ConsensusMode:  block.ConsensusMode,
+		CandidateNodes: block.CandidateNodes,
+		Hash:           block.Hash,
+		BlockID:        block.ID,
+		Time:           block.Time,
+		EcosystemID:    block.EcosystemID,
+		KeyID:          block.KeyID,
+		NodePosition:   converter.Int64ToStr(block.NodePosition),
+		RollbacksHash:  block.RollbacksHash,
+		ConsensusMode:  block.ConsensusMode,
+		CandidateNodes: block.CandidateNodes,
 		Hash:          block.Hash,
 		BlockID:       block.ID,
 		Time:          block.Time,
