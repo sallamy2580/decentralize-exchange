@@ -273,6 +273,7 @@ func processTransactions(logger *log.Entry, txs []*sqldb.Transaction, done <-cha
 			select {
 			case <-done:
 				return txList, nil
+			default:
 			}
 			bufTransaction := bytes.NewBuffer(txItem.Data)
 			tr, err := transaction.UnmarshallTransaction(bufTransaction)
