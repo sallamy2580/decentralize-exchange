@@ -33,10 +33,15 @@ func BlockGenerator(ctx context.Context, d *daemon) error {
 	} else {
 		return nil
 	}
+	DBLock()
+	defer DBUnlock()
+	candidateNodes, err := sqldb.GetCandidateNode(syspar.SysInt(syspar.NumberNodes))
 	candidateNode := &sqldb.CandidateNode{}
 	candidateNodes, err := candidateNode.GetCandidateNode()
 	if err == nil && len(candidateNodes) > 0 {
 		syspar.SetRunModel(consts.CandidateNodeMode)
+		return BlockGeneratorCandidate(ctx, d)
+		return BlockGeneratorCandidate(ctx, d)
 		return BlockGeneratorNew(ctx, d)
 	}
 	d.sleepTime = time.Second
@@ -129,6 +134,16 @@ func BlockGenerator(ctx context.Context, d *daemon) error {
 		return nil
 	}
 
+	header := &types.BlockHeader{
+		BlockId:       prevBlock.BlockID + 1,
+		Timestamp:     st.Unix(),
+		EcosystemId:   0,
+		KeyId:         conf.Config.KeyID,
+	header := &types.BlockHeader{
+		BlockId:       prevBlock.BlockID + 1,
+		Timestamp:     st.Unix(),
+		EcosystemId:   0,
+		KeyId:         conf.Config.KeyID,
 	header := &types.BlockData{
 		BlockID:       prevBlock.BlockID + 1,
 		Time:          st.Unix(),
@@ -146,12 +161,6 @@ func BlockGenerator(ctx context.Context, d *daemon) error {
 		Version:      consts.BlockVersion,
 	}
 
-	pb := &types.BlockData{
-		BlockID:       prevBlock.BlockID,
-		Hash:          prevBlock.Hash,
-	pb := &types.BlockData{
-		BlockID:       prevBlock.BlockID,
-		Hash:          prevBlock.Hash,
 	prev := &types.BlockHeader{
 		BlockId:       prevBlock.BlockID,
 		BlockHash:     prevBlock.Hash,
