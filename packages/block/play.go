@@ -115,6 +115,25 @@ func (b *Block) ProcessTxs(dbTx *sqldb.DbTransaction) (err error) {
 		if t.IsSmartContract() && t.SmartContract().TxSmart.Utxo != nil {
 			//fmt.Println("ToId", t.SmartContract().TxSmart.Utxo.ToID)
 		}
+		err = t.WithOption(notificator.NewQueue(), b.GenBlock, b.Header, b.PrevHeader, dbTx, rand.BytesSeed(t.Hash()), limits, curTx)
+		if err != nil {
+			return err
+		}
+		err = t.Play()
+		if err != nil {
+			if _, ok := t.Inner.(*transaction.StopNetworkParser); ok && err == transaction.ErrNetworkStopping {
+				// Set the node in a pause state
+				node.PauseNodeActivity(node.PauseTypeStopingNetwork)
+				return err
+			}
+			errRoll := t.DbTransaction.RollbackSavepoint(consts.SetSavePointMarkBlock(curTx))
+			if errRoll != nil {
+				t.GetLogger().WithFields(log.Fields{"type": consts.DBError, "error": err, "tx_hash": t.Hash()}).Error("rolling back to previous savepoint")
+				return errRoll
+			}
+			if b.GenBlock {
+				if err == transaction.ErrLimitStop {
+					if curTx == 0 {
 		keyIds = append(keyIds, t.KeyID())
 	}
 	// GroupTxs KeyID ToID
