@@ -324,7 +324,7 @@ func processTransactions(logger *log.Entry, txs []*sqldb.Transaction, done <-cha
 		}
 
 		if tr.IsSmartContract() {
-			err = limits.CheckLimit(tr)
+			err = limits.CheckLimit(tr.Inner)
 			if err == transaction.ErrLimitStop && i > 0 {
 				break
 			} else if err != nil {
