@@ -44,6 +44,7 @@ func BlockGenerator(ctx context.Context, d *daemon) error {
 		return BlockGeneratorCandidate(ctx, d)
 		return BlockGeneratorNew(ctx, d)
 	}
+	syspar.SetRunModel(consts.HonorNodeMode)
 	d.sleepTime = time.Second
 	if node.IsNodePaused() {
 		return nil
