@@ -274,8 +274,3 @@ func MerkleTreeRoot(dataArray [][]byte) []byte {
 	ret := result[int32(len(result)-1)]
 	return ret[0]
 }
-
-type BlockRoll struct {
-	BlockId int64
-	Roll    map[string][]string
-}
